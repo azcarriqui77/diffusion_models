@@ -12,7 +12,7 @@ from tqdm import tqdm
 # for the Encoder and the Decoder. This architecture can be changed following the user's preferences.  
 
 class Encoder(nn.Module):
-    def __init__(self, image_shape, latent_dim=20):
+    def __init__(self, image_shape, latent_dim=3):
         super(Encoder, self).__init__()
         self.image_shape = image_shape
         # La primera parte del Encoder (downblock) va a estar confromada por tres capas convolucionales que extraigan la
@@ -38,14 +38,14 @@ class Encoder(nn.Module):
     def forward(self, x): # x: B, C=3, H, W
         h = self.encoder(x) # h: B, 128, H//8, W//8   Aplicamos las capas convolucionales
         # h = h.view(x.size(0), -1) # h: [batch, 128*H*W//64]   Aplicamos las capas lineales para aplanar y llevar al espacio latente
-        mean = self.encoder_mean(h) # mean: B, latent_dim
-        log_var = self.encoder_log_var(h) # log_var: B, latent_dim
+        mean = self.encoder_mean(h) # mean: B, latent_dim, H//8, W//8
+        log_var = self.encoder_log_var(h) # log_var: B, latent_dim, H//8, W//8
         return mean, log_var
     
 
 
 class Decoder(nn.Module):
-    def __init__(self, image_shape, latent_dim = 20):
+    def __init__(self, image_shape, latent_dim = 3):
         super(Decoder, self).__init__()
         self.image_shape = image_shape
 
@@ -73,7 +73,7 @@ class Decoder(nn.Module):
 
 # Putting together both Encoder and Decoder classes in a single class: VariationalAutoEncoder.
 class VariationalAutoEncoder(nn.Module):
-    def __init__(self, image_shape, latent_dim = 20):
+    def __init__(self, image_shape, latent_dim = 3):
         super(VariationalAutoEncoder, self).__init__()
         self.encoder = Encoder(image_shape, latent_dim)
         self.decoder = Decoder(image_shape, latent_dim)

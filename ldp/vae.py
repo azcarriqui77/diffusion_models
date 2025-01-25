@@ -15,7 +15,7 @@ class Encoder(nn.Module):
     def __init__(self, image_shape, latent_dim=20):
         super(Encoder, self).__init__()
         self.image_shape = image_shape
-        # La primera parte del Encoder va a estar confromada por tres capas convolucionales que extraigan la
+        # La primera parte del Encoder (downblock) va a estar confromada por tres capas convolucionales que extraigan la
         # infromación espacial de las imágenes.
         self.encoder = nn.Sequential(  # Input: B, C, H, W
             nn.Conv2d(self.image_shape[1], 32, kernel_size=4, stride=2, padding=1),   # Output: B, 32, H//2, W//2
@@ -28,12 +28,16 @@ class Encoder(nn.Module):
 
         # La segunda parte del Encoder, que calcula los vectores de media y desviación típica, va a estar formada 
         # por un perceptrón que aplane el tensor para la representación del espacio latente.
-        self.encoder_mean = nn.Linear(in_features=128*(self.image_shape[2]*self.image_shape[3] // 64), out_features=latent_dim) # [batch, latent_dim]
-        self.encoder_log_var = nn.Linear(in_features=128*(self.image_shape[2]*self.image_shape[3] // 64), out_features=latent_dim) # [batch_latent_dim]
+        # self.encoder_mean = nn.Linear(in_features=128*(self.image_shape[2]*self.image_shape[3] // 64), out_features=latent_dim) # [batch, latent_dim]
+        # self.encoder_log_var = nn.Linear(in_features=128*(self.image_shape[2]*self.image_shape[3] // 64), out_features=latent_dim) # [batch_latent_dim]
+
+        # La segunda parte del Encoder va a estar formada por un midblock con una red convolucional, una para la media y otra para la desviación típica.
+        self.encoder_mean = nn.Conv2d(128, latent_dim, kernel_size=1) # [batch, latent_dim, H//8, W//8]
+        self.encoder_log_var = nn.Conv2d(128, latent_dim, kernel_size=1) # [batch, latent_dim, H//8, W//8]
 
     def forward(self, x): # x: B, C=3, H, W
         h = self.encoder(x) # h: B, 128, H//8, W//8   Aplicamos las capas convolucionales
-        h = h.view(x.size(0), -1) # h: [batch, 128*H*W//64]   Aplicamos las capas lineales para aplanar y llevar al espacio latente
+        # h = h.view(x.size(0), -1) # h: [batch, 128*H*W//64]   Aplicamos las capas lineales para aplanar y llevar al espacio latente
         mean = self.encoder_mean(h) # mean: B, latent_dim
         log_var = self.encoder_log_var(h) # log_var: B, latent_dim
         return mean, log_var
@@ -46,10 +50,12 @@ class Decoder(nn.Module):
         self.image_shape = image_shape
 
         # Usamos una red lineal para pasar del espacio latente a las características de salida de las redes convolucionales
-        self.fc = nn.Linear(latent_dim, 128*(self.image_shape[2]*self.image_shape[3] // 64))
+        # self.fc = nn.Linear(latent_dim, 128*(self.image_shape[2]*self.image_shape[3] // 64))
 
         # Redes convolucionales transpuestas
         self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(latent_dim, 128, kernel_size=1),
+            nn.ReLU(),
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1), 
             nn.ReLU(),
             nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),  
@@ -59,8 +65,9 @@ class Decoder(nn.Module):
         )
 
     def forward(self, z):
-        h = self.fc(z)
-        h = h.view(h.size(0), 128, self.image_shape[2]//8, self.image_shape[3]//8)
+        h = z
+        # h = self.fc(z)
+        # h = h.view(h.size(0), 128, self.image_shape[2]//8, self.image_shape[3]//8)
         return self.decoder(h)
 
 

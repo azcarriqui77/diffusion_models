@@ -1,18 +1,25 @@
+## SCRIPT QUE CONTIENE LOS BLOQUES DOWN, MID Y UP DE LA ARQUITECTURA DEL ENCODER Y DECODER
+## PARA UN AUTOENCODER VARIACIONAL
+
+# Escrito por Álvaro Zorrilla Carriquí
+# Basado en el código de ExplainingAI-Code: https://github.com/explainingai-code/StableDiffusion-PyTorch/blob/main/models/blocks.py
+
 import torch
 import torch.nn as nn
+
+# PARÁMETROS DE LAS CLASES
+"""
+    in_channels y out_channels: dimensiones de entrada y salida del bloque (int)
+    num_heads: número de cabezas en la atención multi-cabeza (int)
+    num_layers: número de capas internas dentro del bloque, incluidas las capas convolucionales, normalización y atención (int)
+    attn: indica si se incluye un módulo de atención en el bloque (bool)
+    down(up)_sample: determina si el bloque incluye un paso de down(up)sampling (reducción (aumento) de resolución espacial) (bool)
+    norm_channels: número de grupos usados en GroupNorm, una técnica de normalización (int)
+"""
 
 class DownBlock(nn.Module):
     def __init__(self, in_channels, out_channels, num_layers, num_heads, norm_channels, down_sample=True, 
                  attn=False):
-        """
-        in_channels y out_channels: dimensiones de entrada y salida del bloque
-        num_heads: número de cabezas en la atención multi-cabeza
-        num_layers: número de capas internas dentro del bloque, incluidas las capas convolucionales, normalización y atención
-        attn: indica si se incluye un módulo de atención en el bloque
-        down_sample: determina si el bloque incluye un paso de downsampling (reducción de resolución espacial)
-        norm_channels: número de grupos usados en GroupNorm, una técnica de normalización
-        """
-
         super().__init__()
         self.num_layers = num_layers
         self.down_sample = down_sample
@@ -20,7 +27,7 @@ class DownBlock(nn.Module):
 
         self.resnet_conv1 = nn.ModuleList(
             [
-                nn.Sequetial(
+                nn.Sequential(
                     nn.GroupNorm(norm_channels, in_channels if i == 0 else out_channels),
                     nn.SiLU(),
                     nn.Conv2d(in_channels if i == 0 else out_channels, out_channels, kernel_size=3, stride=1, padding=1)
@@ -119,6 +126,13 @@ class MidBlock(nn.Module):
         self.attentions = nn.ModuleList(
             [nn.MultiheadAttention(out_channels, num_heads, batch_first=True)
             for _ in range(num_layers)]
+        )
+
+        self.residual_input_conv = nn.ModuleList(
+            [
+                nn.Conv2d(in_channels if i == 0 else out_channels, out_channels, kernel_size=1)
+                for i in range(num_layers + 1)
+            ]
         )
     
     def forward(self, x):

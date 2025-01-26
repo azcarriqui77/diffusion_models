@@ -82,7 +82,7 @@ class Diffusion_Scheme:
                 x = 1 / torch.sqrt(alpha) * (x - ((1 - alpha) / (torch.sqrt(1 - alpha_hat))) * predicted_noise) + torch.sqrt(beta) * noise
 
         x = (x.clamp(-1, 1) + 1) / 2
-        x = (x * 255).type(torch.int)
+        # x = (x * 255).type(torch.int)
         return x
 
 """
